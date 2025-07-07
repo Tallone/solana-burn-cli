@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: solana-burn-cli
+            asset_name: solana-burn-cli-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: solana-burn-cli
+            asset_name: solana-burn-cli-linux-x86_64-musl
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: solana-burn-cli.exe
+            asset_name: solana-burn-cli-windows-x86_64.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: solana-burn-cli
+            asset_name: solana-burn-cli-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: solana-burn-cli
+            asset_name: solana-burn-cli-macos-aarch64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install musl-tools (Linux musl only)
+      if: matrix.target == 'x86_64-unknown-linux-musl'
+      run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+    - name: Cache Cargo dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
+
+    - name: Build release binary
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Strip binary (Unix)
+      if: matrix.os != 'windows-latest'
+      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+    - name: Upload binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.asset_name }}
+        path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  create-release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create release archives
+      run: |
+        # Create archives for each platform
+        cd solana-burn-cli-linux-x86_64 && tar -czf ../solana-burn-cli-linux-x86_64.tar.gz solana-burn-cli && cd ..
+        cd solana-burn-cli-linux-x86_64-musl && tar -czf ../solana-burn-cli-linux-x86_64-musl.tar.gz solana-burn-cli && cd ..
+        cd solana-burn-cli-windows-x86_64.exe && zip -r ../solana-burn-cli-windows-x86_64.zip solana-burn-cli.exe && cd ..
+        cd solana-burn-cli-macos-x86_64 && tar -czf ../solana-burn-cli-macos-x86_64.tar.gz solana-burn-cli && cd ..
+        cd solana-burn-cli-macos-aarch64 && tar -czf ../solana-burn-cli-macos-aarch64.tar.gz solana-burn-cli && cd ..
+
+    - name: Generate checksums
+      run: |
+        sha256sum *.tar.gz *.zip > checksums.txt
+
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Solana Burn CLI ${{ steps.version.outputs.VERSION }}
+          
+          A TUI tool for burning Solana SPL tokens and closing ATA accounts.
+          
+          ### Features
+          - 🔥 Burn SPL tokens
+          - 💰 Close ATA accounts and recover SOL rent
+          - 🔍 Search functionality by Mint address
+          - 🛡️ Safety confirmation dialogs
+          - 🖥️ Modern terminal interface
+          
+          ### Downloads
+          Choose the appropriate binary for your platform:
+          
+          - **Linux x86_64**: `solana-burn-cli-linux-x86_64.tar.gz`
+          - **Linux x86_64 (musl)**: `solana-burn-cli-linux-x86_64-musl.tar.gz`
+          - **Windows x86_64**: `solana-burn-cli-windows-x86_64.zip`
+          - **macOS x86_64 (Intel)**: `solana-burn-cli-macos-x86_64.tar.gz`
+          - **macOS aarch64 (Apple Silicon)**: `solana-burn-cli-macos-aarch64.tar.gz`
+          
+          ### Usage
+          ```bash
+          # Extract the archive and run
+          ./solana-burn-cli --private-key <YOUR_PRIVATE_KEY> --rpc-url <RPC_ENDPOINT>
+          ```
+          
+          ### Documentation
+          - [English README](https://github.com/${{ github.repository }}/blob/main/README.md)
+          - [中文文档](https://github.com/${{ github.repository }}/blob/main/README_CN.md)
+          - [Features Guide](https://github.com/${{ github.repository }}/blob/main/FEATURES.md)
+          
+          **⚠️ Security Warning**: Always test on devnet before using on mainnet!
+
+    - name: Upload Linux x86_64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./solana-burn-cli-linux-x86_64.tar.gz
+        asset_name: solana-burn-cli-linux-x86_64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Linux x86_64 musl
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./solana-burn-cli-linux-x86_64-musl.tar.gz
+        asset_name: solana-burn-cli-linux-x86_64-musl.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Windows x86_64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./solana-burn-cli-windows-x86_64.zip
+        asset_name: solana-burn-cli-windows-x86_64.zip
+        asset_content_type: application/zip
+
+    - name: Upload macOS x86_64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./solana-burn-cli-macos-x86_64.tar.gz
+        asset_name: solana-burn-cli-macos-x86_64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload macOS aarch64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./solana-burn-cli-macos-aarch64.tar.gz
+        asset_name: solana-burn-cli-macos-aarch64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload checksums
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./checksums.txt
+        asset_name: checksums.txt
+        asset_content_type: text/plain
