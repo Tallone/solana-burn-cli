@@ -8,7 +8,10 @@ use ratatui::{
 };
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
-    instruction::Instruction, pubkey::Pubkey, signature::{Keypair, Signer}, transaction::Transaction
+    instruction::Instruction,
+    pubkey::Pubkey,
+    signature::{Keypair, Signer},
+    transaction::Transaction,
 };
 use spl_token::instruction::close_account;
 
@@ -25,7 +28,6 @@ pub struct Args {
     /// Solana RPC endpoint URL
     #[arg(short, long, default_value = "https://solana-rpc.publicnode.com")]
     rpc_url: String,
-
     // Whether to burn tokens
     // #[arg(long, default_value = "true")]
     // burn_token: bool,
@@ -480,7 +482,11 @@ impl App {
             if i < self.filtered_accounts.len() {
                 let account_address = self.filtered_accounts[i].0.address;
                 // Find the account in the original list and toggle it
-                if let Some(pos) = self.token_accounts.iter().position(|(acc, _)| acc.address == account_address) {
+                if let Some(pos) = self
+                    .token_accounts
+                    .iter()
+                    .position(|(acc, _)| acc.address == account_address)
+                {
                     self.token_accounts[pos].1 = !self.token_accounts[pos].1;
                     // Update the filtered list to reflect the change
                     self.filtered_accounts[i].1 = self.token_accounts[pos].1;
@@ -525,10 +531,15 @@ impl App {
         if self.search_input.is_empty() {
             self.filtered_accounts = self.token_accounts.clone();
         } else {
-            self.filtered_accounts = self.token_accounts
+            self.filtered_accounts = self
+                .token_accounts
                 .iter()
                 .filter(|(account, _)| {
-                    account.mint.to_string().to_lowercase().contains(&self.search_input.to_lowercase())
+                    account
+                        .mint
+                        .to_string()
+                        .to_lowercase()
+                        .contains(&self.search_input.to_lowercase())
                 })
                 .cloned()
                 .collect();
@@ -544,7 +555,11 @@ impl App {
     fn sync_filtered_accounts(&mut self) {
         // Update filtered accounts to reflect selection changes in token_accounts
         for (filtered_account, filtered_selected) in &mut self.filtered_accounts {
-            if let Some((_, selected)) = self.token_accounts.iter().find(|(acc, _)| acc.address == filtered_account.address) {
+            if let Some((_, selected)) = self
+                .token_accounts
+                .iter()
+                .find(|(acc, _)| acc.address == filtered_account.address)
+            {
                 *filtered_selected = *selected;
             }
         }
@@ -615,7 +630,7 @@ impl App {
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Confirm Processing")
-                    .border_style(Style::default().fg(Color::Red))
+                    .border_style(Style::default().fg(Color::Red)),
             )
             .style(Style::default().fg(Color::White))
             .alignment(Alignment::Center)
@@ -645,10 +660,14 @@ impl App {
             let ixs = chunk
                 .iter()
                 .flat_map(|account| {
-                    [self.create_burn_instruction(account)
-                        .unwrap_or_else(|e| panic!("Failed to create burn instruction: {e}")),
-                     self.create_close_ata_instruction(account)
-                        .unwrap_or_else(|e| panic!("Failed to create close ATA instruction: {e}"))]
+                    [
+                        self.create_burn_instruction(account)
+                            .unwrap_or_else(|e| panic!("Failed to create burn instruction: {e}")),
+                        self.create_close_ata_instruction(account)
+                            .unwrap_or_else(|e| {
+                                panic!("Failed to create close ATA instruction: {e}")
+                            }),
+                    ]
                 })
                 .collect::<Vec<_>>();
             let tx = Transaction::new_signed_with_payer(
@@ -677,7 +696,10 @@ impl App {
         .map_err(|e| e.into())
     }
 
-    fn create_close_ata_instruction(&self, account: &TokenAccountInfo) -> anyhow::Result<Instruction> {
+    fn create_close_ata_instruction(
+        &self,
+        account: &TokenAccountInfo,
+    ) -> anyhow::Result<Instruction> {
         close_account(
             &spl_token::id(),
             &account.address,
