@@ -16,6 +16,8 @@ A TUI (Terminal User Interface) tool for burning Solana SPL tokens and closing A
 
 ## Interface Overview
 
+![Interface Screenshot](./app.png)
+
 ### Top Information Bar
 - Displays wallet public key address
 - Shows current settings (burn tokens, close ATA)

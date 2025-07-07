@@ -41,7 +41,6 @@ struct TokenAccountInfo {
     mint: Pubkey,
     balance: u64,
     ui_balance: String,
-    decimals: u8,
 }
 
 #[tokio::main]
@@ -175,7 +174,6 @@ impl App {
                     mint: Pubkey::from_str_const(&mint),
                     balance: token_amount,
                     ui_balance: ui_token_amount,
-                    decimals: 1,
                 },
                 false,
             )); // Initially not selected
@@ -343,18 +341,15 @@ impl App {
     async fn handle_crossterm_events(&mut self) -> Result<()> {
         tokio::select! {
             event = self.event_stream.next().fuse() => {
-                match event {
-                    Some(Ok(evt)) => {
-                        match evt {
-                            Event::Key(key)
-                                if key.kind == KeyEventKind::Press
-                                    => self.on_key_event(key),
-                            Event::Mouse(_) => {}
-                            Event::Resize(_, _) => {}
-                            _ => {}
-                        }
+                if let Some(Ok(evt)) = event {
+                    match evt {
+                        Event::Key(key)
+                            if key.kind == KeyEventKind::Press
+                                => self.on_key_event(key),
+                        Event::Mouse(_) => {}
+                        Event::Resize(_, _) => {}
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
             _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {
@@ -651,9 +646,9 @@ impl App {
                 .iter()
                 .flat_map(|account| {
                     [self.create_burn_instruction(account)
-                        .unwrap_or_else(|e| panic!("Failed to create burn instruction: {}", e)),
+                        .unwrap_or_else(|e| panic!("Failed to create burn instruction: {e}")),
                      self.create_close_ata_instruction(account)
-                        .unwrap_or_else(|e| panic!("Failed to create close ATA instruction: {}", e))]
+                        .unwrap_or_else(|e| panic!("Failed to create close ATA instruction: {e}"))]
                 })
                 .collect::<Vec<_>>();
             let tx = Transaction::new_signed_with_payer(
@@ -666,7 +661,7 @@ impl App {
             // println!("tx: {:?}", tx);
             self.rpc_client
                 .send_and_confirm_transaction_with_spinner(&tx)
-                .unwrap_or_else(|e| panic!("Failed to send transaction: {}", e));
+                .unwrap_or_else(|e| panic!("Failed to send transaction: {e}"));
         });
     }
 
