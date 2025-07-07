@@ -114,6 +114,8 @@ cd solana-burn-cli
 cargo build --release
 ```
 
+**Note for Windows users**: If you encounter OpenSSL build issues, see the [Windows Build Guide](WINDOWS_BUILD.md) for detailed setup instructions.
+
 ### Run
 ```bash
 # Basic usage

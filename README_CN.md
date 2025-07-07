@@ -109,6 +109,8 @@ cd solana-burn-cli
 cargo build --release
 ```
 
+**Windows用户注意**: 如果遇到OpenSSL构建问题，请参考 [Windows构建指南](WINDOWS_BUILD.md) 获取详细的设置说明。
+
 ### 运行
 ```bash
 # 基本用法

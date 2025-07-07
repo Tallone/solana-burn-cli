@@ -50,6 +50,12 @@ jobs:
       if: matrix.target == 'x86_64-unknown-linux-musl'
       run: sudo apt-get update && sudo apt-get install -y musl-tools
 
+    - name: Install OpenSSL (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+        vcpkg install openssl:x64-windows-static-md
+
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
       with:

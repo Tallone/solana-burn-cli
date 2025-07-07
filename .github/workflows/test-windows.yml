@@ -1,0 +1,49 @@
+name: Test Windows Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/test-windows.yml'
+      - 'Cargo.toml'
+      - 'src/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-windows:
+    name: Test Windows Build
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: x86_64-pc-windows-msvc
+
+    - name: Install OpenSSL
+      run: |
+        echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+        vcpkg install openssl:x64-windows-static-md
+
+    - name: Cache Cargo dependencies
+      uses: Swatinem/rust-cache@v2
+
+    - name: Build
+      run: cargo build --release --target x86_64-pc-windows-msvc
+
+    - name: Test binary
+      run: |
+        $binary = "target\x86_64-pc-windows-msvc\release\solana-burn-cli.exe"
+        if (Test-Path $binary) {
+          Write-Host "✅ Binary built successfully: $binary"
+          & $binary --help
+        } else {
+          Write-Host "❌ Binary not found: $binary"
+          exit 1
+        }
