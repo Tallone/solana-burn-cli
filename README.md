@@ -16,6 +16,8 @@ A TUI (Terminal User Interface) tool for burning Solana SPL tokens and closing A
 
 ## Interface Overview
 
+![Interface Screenshot](./app.png)
+
 ### Top Information Bar
 - Displays wallet public key address
 - Shows current settings (burn tokens, close ATA)
@@ -111,6 +113,8 @@ git clone https://github.com/Tallone/solana-burn-cli.git
 cd solana-burn-cli
 cargo build --release
 ```
+
+**Note for Windows users**: If you encounter OpenSSL build issues, see the [Windows Build Guide](WINDOWS_BUILD.md) for detailed setup instructions.
 
 ### Run
 ```bash
